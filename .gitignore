@@ -34,3 +34,5 @@ dist-ssr
 # Third-party asset files not referenced by any component. Kept locally for
 # reference, deliberately not published. See README.
 _reference-assets/
+
+.vercel

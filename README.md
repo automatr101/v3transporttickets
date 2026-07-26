@@ -24,8 +24,8 @@ value the client has not yet supplied. Placeholders are deliberately broken, fin
 (`CONFIRM_WITH_CLIENT`) rather than plausible invented values, so nothing fake can ship by accident.
 
 Outstanding: phone number, WhatsApp number, exact street address / GhanaPost GPS code, fares,
-operating hours, the four track-record figures, the list of routes actually served, logo artwork,
-and social profile URLs.
+operating hours, the four track-record figures, the list of routes actually served, and social
+profile URLs.
 
 Grep for `CONFIRM_WITH_CLIENT` to find the wiring points. Remove the "Open items" `<section>`
 once everything is filled in.
@@ -45,4 +45,19 @@ These are placeholders pending V3's own photography. Replace them at the same di
 A further eight unreferenced files from the same source (the eGotravel logo SVGs, favicons, and
 OG banner) were moved to `_reference-assets/` and are gitignored — no component renders them.
 
-The header wordmark is set in type because no V3 logo asset exists yet.
+## Logo
+
+`public/images/logo-v3-dark.png` is V3's own wordmark, used in the header at `h-5` (renders
+125x20 from a 748x120 source, so ~6x density).
+
+The supplied artwork was a JPEG of white letterforms on a flat navy field. It was cropped to the
+mark's bounding box, the navy keyed out to transparency, and the letterforms recoloured to
+`#030712` to sit on this cream header. The orange period is preserved at its source value
+`#FB3B17` — it is detected by hue and given its own alpha, otherwise a luminance key would have
+rendered it semi-transparent.
+
+`logo-v3-light.png` is the same mark left white, for dark surfaces (footer variant, OG image).
+
+**This is a raster derived from a JPEG.** Ask the client for the vector source (SVG/AI/Figma) —
+the sliced letterforms will not survive being scaled up for signage or vehicle livery, and a
+vector would also drop the header asset from ~38 KB to about 3 KB.

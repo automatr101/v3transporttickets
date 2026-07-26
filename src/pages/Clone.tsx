@@ -173,10 +173,11 @@ export default function Clone() {
           {/* 24px total to the nav — original composes this as mr-4 (16px) on the img
               plus sm:space-x-2 (8px) on the flex parent; mr-6 is the same rendered gap.
               Wordmark stands in for a real logo asset — see confirm list. */}
+          {/* V3's own wordmark. Supplied artwork was white-on-navy; the navy was
+              keyed out and the letterforms recoloured to #030712 for this cream
+              header. logo-v3-light.png is the same mark in white for dark surfaces. */}
           <a href="/" className="flex items-center shrink-0 mr-6">
-            <span className="font-rubik font-bold text-[18px] leading-5 text-[#030712]">
-              V3 Transport<span className="text-orange-600">.</span>
-            </span>
+            <img src="/images/logo-v3-dark.png" alt="V3 Transport Services" className="h-5 w-auto" />
           </a>
 
           <div className="lg:flex-1 lg:flex flex-wrap items-center justify-between">
@@ -548,9 +549,6 @@ export default function Clone() {
             </li>
             <li>
               <strong>Routes served</strong> — the origin/destination lists are provisional
-            </li>
-            <li>
-              <strong>Logo artwork</strong> — header uses a text wordmark, no supplied mark
             </li>
             <li>
               <strong>Social profiles</strong> — footer icons link nowhere
