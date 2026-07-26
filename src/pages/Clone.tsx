@@ -437,7 +437,11 @@ export default function Clone() {
               BOOKING CARD
               ============================================ */}
           <div className="mt-5 mb-8">
-            <div className="mx-auto sm:flex sm:space-x-3 p-3 bg-white shadow-md rounded-2xl sm:rounded-full">
+            {/* divide-y is mobile-only and is a deliberate divergence from the source
+                design, which had no dividers — but it had three fields in a horizontal
+                pill, not four stacked rows. Without separation the mobile card reads as
+                one ambiguous block of text. Cleared at sm: where the pill layout returns. */}
+            <div className="mx-auto sm:flex sm:space-x-3 divide-y divide-gray-100 sm:divide-y-0 p-3 bg-white shadow-md rounded-2xl sm:rounded-full">
               <div className="flex-1 flex items-center px-1 py-2 sm:py-0 sm:pr-3">
                 <label className="sr-only" htmlFor="origin">
                   Origin
@@ -446,7 +450,7 @@ export default function Clone() {
                   id="origin"
                   value={origin}
                   onChange={(e) => setOrigin(e.target.value)}
-                  className="w-full appearance-none bg-transparent bg-no-repeat bg-[right_0.25rem_center] pr-6 py-3 px-4 rounded-full text-sm !font-mono font-semibold text-black border border-transparent focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out cursor-pointer"
+                  className="w-full appearance-none bg-transparent bg-no-repeat bg-[right_0.25rem_center] pr-6 py-3 px-4 rounded-full text-base sm:text-sm !font-mono font-semibold text-black border border-transparent focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out cursor-pointer"
                   style={{ backgroundImage: CHEVRON_BG }}
                 >
                   <option value="">Travelling from?</option>
@@ -466,7 +470,7 @@ export default function Clone() {
                   id="destination"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
-                  className="w-full appearance-none bg-transparent bg-no-repeat bg-[right_0.25rem_center] pr-6 py-3 px-4 rounded-full text-sm !font-mono font-semibold text-black border border-transparent focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out cursor-pointer"
+                  className="w-full appearance-none bg-transparent bg-no-repeat bg-[right_0.25rem_center] pr-6 py-3 px-4 rounded-full text-base sm:text-sm !font-mono font-semibold text-black border border-transparent focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out cursor-pointer"
                   style={{ backgroundImage: CHEVRON_BG }}
                 >
                   <option value="">Select a destination</option>
@@ -488,7 +492,7 @@ export default function Clone() {
                   value={date}
                   min={minDate}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full sm:w-auto py-3 px-4 rounded-full text-sm !font-mono font-semibold text-black border border-transparent focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out"
+                  className="w-full sm:w-auto py-3 px-4 rounded-full text-base sm:text-sm !font-mono font-semibold text-black border border-transparent focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out"
                 />
               </div>
 
@@ -500,7 +504,7 @@ export default function Clone() {
                   id="passengers"
                   value={passengers}
                   onChange={(e) => setPassengers(Number(e.target.value))}
-                  className="w-full sm:w-auto appearance-none bg-transparent bg-no-repeat bg-[right_0.25rem_center] pr-6 py-3 px-4 rounded-full text-sm !font-mono font-semibold text-black border border-transparent focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out cursor-pointer"
+                  className="w-full sm:w-auto appearance-none bg-transparent bg-no-repeat bg-[right_0.25rem_center] pr-6 py-3 px-4 rounded-full text-base sm:text-sm !font-mono font-semibold text-black border border-transparent focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out cursor-pointer"
                   style={{ backgroundImage: CHEVRON_BG }}
                 >
                   {Array.from({ length: MAX_PASSENGERS }, (_, i) => i + 1).map((n) => (
@@ -611,7 +615,7 @@ export default function Clone() {
                         required
                         value={passengerName}
                         onChange={(e) => setPassengerName(e.target.value)}
-                        className="mt-1 w-full py-2.5 px-3 rounded-lg text-sm border border-gray-300 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out"
+                        className="mt-1 w-full py-2.5 px-3 rounded-lg text-base sm:text-sm border border-gray-300 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out"
                       />
                     </div>
                     <div>
@@ -625,7 +629,7 @@ export default function Clone() {
                         inputMode="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        className="mt-1 w-full py-2.5 px-3 rounded-lg text-sm border border-gray-300 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out"
+                        className="mt-1 w-full py-2.5 px-3 rounded-lg text-base sm:text-sm border border-gray-300 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out"
                       />
                     </div>
                     <div>
@@ -636,7 +640,7 @@ export default function Clone() {
                         id="pax-seats"
                         value={seats}
                         onChange={(e) => setSeats(Number(e.target.value))}
-                        className="mt-1 w-full py-2.5 px-3 rounded-lg text-sm border border-gray-300 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out cursor-pointer"
+                        className="mt-1 w-full py-2.5 px-3 rounded-lg text-base sm:text-sm border border-gray-300 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out cursor-pointer"
                       >
                         {Array.from(
                           { length: Math.min(MAX_PASSENGERS, selectedTrip.seatsAvailable) },
