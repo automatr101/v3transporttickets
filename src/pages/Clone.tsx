@@ -285,10 +285,10 @@ export default function Clone() {
       <section className="bg-[#F4EDE4]">
         <div className="mx-auto max-w-6xl p-6">
           <h1 className="font-rubik font-extrabold text-[#030712]">
-            <span className="block text-[48px] leading-[48px] tracking-[-2.4px] sm:text-[60px] sm:leading-[60px] sm:tracking-[-3px] lg:text-[72px] lg:leading-[72px] lg:tracking-[-3.6px]">
+            <span className="block text-[48px] leading-[53px] tracking-[-2.4px] sm:text-[60px] sm:leading-[60px] sm:tracking-[-3px] lg:text-[72px] lg:leading-[72px] lg:tracking-[-3.6px]">
               Northern Ghana's <span className="text-orange-600">Trusted</span>
             </span>
-            <span className="block text-[48px] leading-[48px] tracking-[-2.4px] sm:text-[60px] sm:leading-[60px] sm:tracking-[-3px] lg:text-[72px] lg:leading-[72px] lg:tracking-[-3.6px]">
+            <span className="block text-[48px] leading-[53px] tracking-[-2.4px] sm:text-[60px] sm:leading-[60px] sm:tracking-[-3px] lg:text-[72px] lg:leading-[72px] lg:tracking-[-3.6px]">
               Way to Move<span className="text-orange-600">.</span>
             </span>
           </h1>
