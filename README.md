@@ -17,6 +17,48 @@ The whole page is one component: [`src/pages/Clone.tsx`](src/pages/Clone.tsx), w
 divided by banner comments (Header, Hero, Booking card, About, Track record, Open items, Footer,
 WhatsApp button). `src/App.tsx` renders it at the root route.
 
+## Booking flow
+
+The hero search card is wired end to end: route dropdowns -> trip search -> results ->
+booking form -> `pending` booking record.
+
+**No Supabase project is connected.** All data comes from [`src/lib/booking.ts`](src/lib/booking.ts),
+which generates sample routes and schedules locally. Every exported function carries the exact
+Supabase query that should replace it, and the swap is confined to that one file — no component
+imports anything else. Setting `IS_MOCK = false` also removes the "Sample data" notice that
+currently sits above the results, which exists so a demo is never mistaken for real availability
+or fares.
+
+Mock schedules are generated relative to today across a 21-day horizon rather than hardcoded to
+fixed dates, so the demo does not go empty tomorrow. Departures that have already left are hidden
+from today's results.
+
+Expected schema (`routes`, `trips`, `bookings`) is documented at the top of that file. Note that
+seat decrementing is deliberately *not* implemented client-side — it races between concurrent
+bookings and belongs in a Postgres transaction or edge function.
+
+## Stats counters
+
+[`src/hooks/useCountUp.ts`](src/hooks/useCountUp.ts) counts from zero on scroll into view, once,
+via IntersectionObserver, and honours `prefers-reduced-motion`.
+
+Values live in the `STATS` config at the top of `Clone.tsx`. All four are `null`, which renders an
+em dash and keeps the counter dormant — these are client metrics that have not been supplied.
+Drop a real number in and the animation starts working with no other change:
+
+```ts
+{ label: "Passengers moved", value: 230000, color: "text-white", suffix: "+" }
+```
+
+`decimals` drives both the count-up steps and the final display, so a rate like 99.9 needs
+`decimals: 1`.
+
+## Map
+
+Contact section uses a keyless Google Maps `output=embed` iframe, so there is no API key or
+billing account to leak. The pin is an approximate coordinate for the SSNIT Building
+(`MAP_LAT` / `MAP_LNG` in `Clone.tsx`) — replace with the exact GhanaPost GPS code when supplied.
+
 ## Unconfirmed content — do not launch without resolving
 
 The page renders a visible yellow `[CONFIRM WITH CLIENT]` block above the footer listing every

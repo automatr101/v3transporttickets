@@ -1,5 +1,18 @@
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
+import {
+  IS_MOCK,
+  createBooking,
+  formatFare,
+  formatTime,
+  listDestinations,
+  listOrigins,
+  searchTrips,
+  today,
+  type Booking,
+  type Trip,
+} from "../lib/booking"
+import { useCountUp } from "../hooks/useCountUp"
 
 /* ============================================
     UNCONFIRMED DATA
@@ -110,27 +123,39 @@ const FEATURE_BULLETS = [
   },
 ]
 
-/* Stat VALUES are client metrics — not invented here. Labels describe the
-   categories; each value renders a confirm marker until supplied. */
-const STATS = [
-  { label: "Passengers moved", color: "text-white" },
-  { label: "Routes served", color: "text-rose-400" },
-  { label: "Years operating", color: "text-cyan-400" },
-  { label: "On-time rate", color: "text-lime-400" },
+/* ============================================
+    STATS CONFIG
+    The counters are built and working. Every `value` is null because these are
+    [CONFIRM: FIGURE] — real client metrics that have not been supplied, and
+    inventing them would put fabricated claims on a live commercial site.
+
+    A null value renders an em dash and the counter stays dormant. Drop a real
+    number in and it animates on scroll with no other change:
+        { label: "Passengers moved", value: 230000, suffix: "+" }
+    `decimals` controls both the count-up steps and the final display, so an
+    on-time rate of 99.9 needs decimals: 1.
+    ============================================ */
+type Stat = {
+  label: string
+  value: number | null
+  color: string
+  suffix?: string
+  decimals?: number
+}
+
+const STATS: Stat[] = [
+  { label: "Passengers moved", value: null, color: "text-white", suffix: "+" },
+  { label: "Routes served", value: null, color: "text-rose-400", suffix: "+" },
+  { label: "Years operating", value: null, color: "text-cyan-400" },
+  { label: "On-time rate", value: null, color: "text-lime-400", suffix: "%", decimals: 1 },
 ]
 
-/* Route list is provisional — V3 must confirm which of these it actually serves. */
-const PLACES = [
-  "Bolgatanga",
-  "Navrongo",
-  "Bawku",
-  "Tamale",
-  "Wa",
-  "Kumasi",
-  "Accra",
-  "Tamale Airport (TML)",
-  "Kotoka Intl, Accra (ACC)",
-]
+const MAX_PASSENGERS = 8
+
+/* Approximate pin for the SSNIT Building, Bolgatanga. Replace once the client
+   supplies the exact GhanaPost GPS code — still on the confirm list. */
+const MAP_LAT = 10.7875
+const MAP_LNG = -0.853
 
 const SOCIAL_ICONS = [
   {
@@ -154,14 +179,125 @@ const SOCIAL_ICONS = [
 const CHEVRON_BG =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E\")"
 
+/* One stat block. Split out because useCountUp is a hook and cannot be called
+   inside a .map() loop. */
+function StatBlock({ stat }: { stat: Stat }) {
+  const { ref, value, pending } = useCountUp(stat.value, { decimals: stat.decimals ?? 0 })
+
+  const display = pending
+    ? "—"
+    : `${value.toLocaleString("en-GH", {
+        minimumFractionDigits: stat.decimals ?? 0,
+        maximumFractionDigits: stat.decimals ?? 0,
+      })}${stat.suffix ?? ""}`
+
+  return (
+    <div ref={ref} className="flex flex-col gap-y-3 border-l border-white/10 pl-6">
+      <dd
+        className={`order-first text-[30px] font-semibold tracking-tight tabular-nums ${stat.color}`}
+        aria-label={pending ? `${stat.label}: figure not yet supplied` : undefined}
+      >
+        {display}
+      </dd>
+      <dt className="text-sm leading-6 text-white">{stat.label}</dt>
+    </div>
+  )
+}
+
 export default function Clone() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
+  /* ---- booking flow ---- */
+  const [origins, setOrigins] = useState<string[]>([])
+  const [destinations, setDestinations] = useState<string[]>([])
   const [origin, setOrigin] = useState("")
   const [destination, setDestination] = useState("")
-  const [date, setDate] = useState("2026-07-27")
-  const [passengers, setPassengers] = useState("1")
+  const minDate = useMemo(() => today(), [])
+  const [date, setDate] = useState(minDate)
+  const [passengers, setPassengers] = useState(1)
 
-  const searchDisabled = !origin || !destination
+  const [searching, setSearching] = useState(false)
+  const [results, setResults] = useState<Trip[] | null>(null)
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null)
+  const [booking, setBooking] = useState<Booking | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  /* Booking form */
+  const [passengerName, setPassengerName] = useState("")
+  const [phone, setPhone] = useState("")
+  const [seats, setSeats] = useState(1)
+  const [submitting, setSubmitting] = useState(false)
+
+  const searchDisabled = !origin || !destination || searching
+
+  // Origins once on mount.
+  useEffect(() => {
+    let alive = true
+    listOrigins().then((o) => alive && setOrigins(o))
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  // Destinations follow the chosen origin. The `alive` guard stops a slow
+  // earlier request from overwriting a newer one if the user switches quickly.
+  useEffect(() => {
+    let alive = true
+    listDestinations(origin || undefined).then((d) => {
+      if (!alive) return
+      setDestinations(d)
+      // Clear a destination that the new origin cannot reach.
+      setDestination((cur) => (cur && !d.includes(cur) ? "" : cur))
+    })
+    return () => {
+      alive = false
+    }
+  }, [origin])
+
+  async function handleSearch() {
+    setSearching(true)
+    setError(null)
+    setSelectedTrip(null)
+    setBooking(null)
+    try {
+      const trips = await searchTrips({ origin, destination, date })
+      setResults(trips)
+    } catch {
+      setError("Could not load trips. Please try again.")
+      setResults(null)
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  function handleSelectTrip(trip: Trip) {
+    setSelectedTrip(trip)
+    setSeats(Math.min(passengers, trip.seatsAvailable))
+    setPassengerName("")
+    setPhone("")
+    setError(null)
+  }
+
+  async function handleConfirmBooking(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedTrip) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      const created = await createBooking({
+        tripId: selectedTrip.id,
+        passengerName: passengerName.trim(),
+        phone: phone.trim(),
+        seats,
+      })
+      setBooking(created)
+      setSelectedTrip(null)
+    } catch {
+      setError("Could not save your booking. Please try again or contact us on WhatsApp.")
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#F4EDE4] font-sans text-[#030712]">
@@ -314,7 +450,7 @@ export default function Clone() {
                   style={{ backgroundImage: CHEVRON_BG }}
                 >
                   <option value="">Travelling from?</option>
-                  {PLACES.map((place) => (
+                  {origins.map((place) => (
                     <option key={place} value={place}>
                       {place}
                     </option>
@@ -334,7 +470,7 @@ export default function Clone() {
                   style={{ backgroundImage: CHEVRON_BG }}
                 >
                   <option value="">Select a destination</option>
-                  {PLACES.map((place) => (
+                  {destinations.map((place) => (
                     <option key={place} value={place}>
                       {place}
                     </option>
@@ -350,6 +486,7 @@ export default function Clone() {
                   id="travel-date"
                   type="date"
                   value={date}
+                  min={minDate}
                   onChange={(e) => setDate(e.target.value)}
                   className="w-full sm:w-auto py-3 px-4 rounded-full text-sm !font-mono font-semibold text-black border border-transparent focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out"
                 />
@@ -362,13 +499,13 @@ export default function Clone() {
                 <select
                   id="passengers"
                   value={passengers}
-                  onChange={(e) => setPassengers(e.target.value)}
+                  onChange={(e) => setPassengers(Number(e.target.value))}
                   className="w-full sm:w-auto appearance-none bg-transparent bg-no-repeat bg-[right_0.25rem_center] pr-6 py-3 px-4 rounded-full text-sm !font-mono font-semibold text-black border border-transparent focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out cursor-pointer"
                   style={{ backgroundImage: CHEVRON_BG }}
                 >
-                  {["1", "2", "3", "4", "5", "6+"].map((n) => (
+                  {Array.from({ length: MAX_PASSENGERS }, (_, i) => i + 1).map((n) => (
                     <option key={n} value={n}>
-                      {n} {n === "1" ? "passenger" : "passengers"}
+                      {n} {n === 1 ? "passenger" : "passengers"}
                     </option>
                   ))}
                 </select>
@@ -377,25 +514,209 @@ export default function Clone() {
               <div className="pt-3 sm:pt-0 sm:flex sm:items-center">
                 <button
                   type="button"
+                  onClick={handleSearch}
                   disabled={searchDisabled}
                   className="w-full sm:w-auto py-3 px-6 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-3xl border border-transparent bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50 disabled:pointer-events-none transition-colors duration-300 ease-in-out"
                 >
                   <svg
-                    className="w-5 h-5 stroke-current"
+                    className={`w-5 h-5 stroke-current ${searching ? "animate-spin" : ""}`}
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
                     stroke="currentColor"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-                    />
+                    {searching ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v3m0 12v3m9-9h-3M6 12H3" />
+                    ) : (
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+                      />
+                    )}
                   </svg>
-                  Search Trips
+                  {searching ? "Searching…" : "Search Trips"}
                 </button>
               </div>
+            </div>
+
+            {/* ============================================
+                SEARCH RESULTS / BOOKING
+                ============================================ */}
+            <div aria-live="polite">
+              {IS_MOCK && (results !== null || selectedTrip || booking) && (
+                <p className="mt-4 px-4 py-2 rounded-lg bg-yellow-100 border border-yellow-300 text-[13px] text-yellow-900">
+                  <strong>Sample data.</strong> Supabase is not connected — these schedules, seat
+                  counts and fares are placeholders and no booking is really saved.
+                </p>
+              )}
+
+              {error && (
+                <p className="mt-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
+                  {error}
+                </p>
+              )}
+
+              {/* Confirmation */}
+              {booking && (
+                <div className="mt-4 p-5 bg-white rounded-2xl shadow-md">
+                  <p className="text-[16px] font-semibold text-gray-900">Booking request received</p>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Reference <span className="!font-mono font-semibold">{booking.id}</span> · status{" "}
+                    <span className="font-semibold">{booking.status}</span>. We'll confirm your seat
+                    shortly.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBooking(null)
+                      setResults(null)
+                    }}
+                    className="mt-4 py-2 px-5 text-sm font-medium rounded text-white bg-slate-800 hover:bg-slate-900 transition-colors duration-300 ease-in-out"
+                  >
+                    Book another trip
+                  </button>
+                </div>
+              )}
+
+              {/* Booking form */}
+              {selectedTrip && !booking && (
+                <form onSubmit={handleConfirmBooking} className="mt-4 p-5 bg-white rounded-2xl shadow-md">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[16px] font-semibold text-gray-900">
+                        {selectedTrip.origin} → {selectedTrip.destination}
+                      </p>
+                      <p className="mt-1 text-sm text-gray-600">
+                        {selectedTrip.date} · departs {formatTime(selectedTrip.departureTime)} ·{" "}
+                        {formatFare(selectedTrip.fare)} per seat
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTrip(null)}
+                      className="shrink-0 text-sm text-black hover:text-gray-600 transition-colors duration-300 ease-in-out"
+                    >
+                      Back
+                    </button>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-[13px] font-medium text-gray-700" htmlFor="pax-name">
+                        Passenger name
+                      </label>
+                      <input
+                        id="pax-name"
+                        required
+                        value={passengerName}
+                        onChange={(e) => setPassengerName(e.target.value)}
+                        className="mt-1 w-full py-2.5 px-3 rounded-lg text-sm border border-gray-300 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[13px] font-medium text-gray-700" htmlFor="pax-phone">
+                        Phone number
+                      </label>
+                      <input
+                        id="pax-phone"
+                        required
+                        type="tel"
+                        inputMode="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="mt-1 w-full py-2.5 px-3 rounded-lg text-sm border border-gray-300 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[13px] font-medium text-gray-700" htmlFor="pax-seats">
+                        Seats
+                      </label>
+                      <select
+                        id="pax-seats"
+                        value={seats}
+                        onChange={(e) => setSeats(Number(e.target.value))}
+                        className="mt-1 w-full py-2.5 px-3 rounded-lg text-sm border border-gray-300 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out cursor-pointer"
+                      >
+                        {Array.from(
+                          { length: Math.min(MAX_PASSENGERS, selectedTrip.seatsAvailable) },
+                          (_, i) => i + 1,
+                        ).map((n) => (
+                          <option key={n} value={n}>
+                            {n}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 flex items-center justify-between gap-4">
+                    <p className="text-sm text-gray-600">
+                      Total{" "}
+                      <span className="font-semibold text-gray-900">
+                        {formatFare(selectedTrip.fare * seats)}
+                      </span>
+                    </p>
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="py-3 px-6 text-sm font-semibold rounded-3xl border border-transparent bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50 disabled:pointer-events-none transition-colors duration-300 ease-in-out"
+                    >
+                      {submitting ? "Confirming…" : "Confirm booking"}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Results list */}
+              {!selectedTrip && !booking && results !== null && results.length > 0 && (
+                <ul className="mt-4 space-y-3">
+                  {results.map((trip) => (
+                    <li
+                      key={trip.id}
+                      className="p-4 bg-white rounded-2xl shadow-md flex flex-wrap items-center gap-4 justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[15px] font-semibold text-gray-900">
+                          {trip.origin} → {trip.destination}
+                        </p>
+                        <p className="mt-0.5 text-sm text-gray-600">
+                          Departs {formatTime(trip.departureTime)} · {trip.seatsAvailable} seat
+                          {trip.seatsAvailable === 1 ? "" : "s"} left
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4 shrink-0">
+                        <span className="text-[15px] font-semibold text-gray-900">
+                          {formatFare(trip.fare)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectTrip(trip)}
+                          className="py-2.5 px-5 text-sm font-semibold rounded-3xl border border-transparent bg-orange-600 text-white hover:bg-orange-700 transition-colors duration-300 ease-in-out"
+                        >
+                          Select
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Empty state */}
+              {!selectedTrip && !booking && results !== null && results.length === 0 && (
+                <p className="mt-4 px-4 py-3 rounded-lg bg-white shadow-md text-sm text-gray-700">
+                  No trips found for this route on this date — try another date or{" "}
+                  <a
+                    href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline font-medium hover:text-gray-900 transition-colors duration-300 ease-in-out"
+                  >
+                    contact us on WhatsApp
+                  </a>
+                  .
+                </p>
+              )}
             </div>
           </div>
 
@@ -506,14 +827,79 @@ export default function Clone() {
 
           <dl className="mt-16 grid grid-cols-1 gap-x-8 gap-y-10 sm:mt-20 sm:grid-cols-2 sm:gap-y-16 lg:grid-cols-4">
             {STATS.map((stat) => (
-              <div key={stat.label} className="flex flex-col gap-y-3 border-l border-white/10 pl-6">
-                <dd className={`order-first text-[30px] font-semibold tracking-tight ${stat.color}`}>
-                  <Confirm what="figure" />
-                </dd>
-                <dt className="text-sm leading-6 text-white">{stat.label}</dt>
-              </div>
+              <StatBlock key={stat.label} stat={stat} />
             ))}
           </dl>
+        </div>
+      </section>
+
+      {/* ============================================
+          CONTACT / MAP SECTION
+          ============================================ */}
+      <section id="contact" className="bg-white">
+        <div className="mx-auto max-w-6xl p-6 pb-16 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+          <div>
+            <h2 className="font-rubik font-bold text-[30px] leading-[36px] tracking-[-0.75px] sm:text-[36px] sm:leading-[40px] sm:tracking-[-0.9px] text-gray-900">
+              Find Us
+            </h2>
+            <p className="mt-4 text-[18px] leading-[28px] text-gray-600">
+              We operate from the SSNIT Building in Bolgatanga's commercial center, in the heart of
+              the Upper East Region.
+            </p>
+
+            <dl className="mt-8 space-y-5 text-[15px]">
+              <div>
+                <dt className="font-semibold text-gray-900">Address</dt>
+                <dd className="mt-1 text-gray-600">
+                  SSNIT Building, Bolgatanga, Upper East Region, Ghana
+                  <br />
+                  <span className="inline-block mt-1">
+                    <Confirm what="street line + GhanaPost GPS" />
+                  </span>
+                </dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-gray-900">Phone</dt>
+                <dd className="mt-1 text-gray-600">
+                  <Confirm what="phone number" />
+                </dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-gray-900">Opening hours</dt>
+                <dd className="mt-1 text-gray-600">
+                  <Confirm what="operating hours" />
+                </dd>
+              </div>
+            </dl>
+
+            <div className="mt-8">
+              <a
+                href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-6 py-3 rounded text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 transition-colors duration-300 ease-in-out"
+              >
+                Message us on WhatsApp
+              </a>
+            </div>
+          </div>
+
+          {/* Responsive iframe. The `output=embed` form needs no Maps API key,
+              so there is no billing account or key to leak. The pin is an
+              approximate coordinate — swap the q= value for the exact
+              GhanaPost GPS code once the client supplies it. */}
+          <div className="w-full overflow-hidden rounded-2xl shadow-md">
+            <div className="relative w-full aspect-[4/3] lg:aspect-square">
+              <iframe
+                title="V3 Transport Services location — SSNIT Building, Bolgatanga"
+                src={`https://www.google.com/maps?q=${MAP_LAT},${MAP_LNG}&hl=en&z=16&output=embed`}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+                className="absolute inset-0 h-full w-full border-0"
+              />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -521,7 +907,7 @@ export default function Clone() {
           OPEN ITEMS — REMOVE BEFORE LAUNCH
           Visible checklist of everything that must come from the client.
           ============================================ */}
-      <section id="contact" className="bg-yellow-50 border-y-2 border-yellow-300 px-6 py-10">
+      <section id="open-items" className="bg-yellow-50 border-y-2 border-yellow-300 px-6 py-10">
         <div className="mx-auto max-w-6xl">
           <h2 className="font-rubik font-bold text-[20px] leading-7 text-yellow-900">
             [CONFIRM WITH CLIENT] — not yet supplied, nothing invented
