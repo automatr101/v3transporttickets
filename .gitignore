@@ -1,0 +1,36 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Vercel
+.vercel
+
+# Clone-workflow working artifacts — reference material for the build, not app
+# source. Holds screenshots and extracted styles of the source site.
+.tasks/
+.playwright-mcp/
+
+# Third-party asset files not referenced by any component. Kept locally for
+# reference, deliberately not published. See README.
+_reference-assets/
