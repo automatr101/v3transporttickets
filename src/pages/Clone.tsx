@@ -194,6 +194,13 @@ const SOCIAL_ICONS = [
 const CHEVRON_BG =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E\")"
 
+/* The three selects carry a chevron, but input[type=date] draws no indicator at
+   all on iOS Safari — so on a phone the date was the only row in the card with
+   nothing on the right, reading as static text rather than a tappable field.
+   This draws a matching calendar glyph in the same stroke colour and weight. */
+const CALENDAR_BG =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6.5 2.5v2m7-2v2M3 7.5h14M4.5 4.5h11A1.5 1.5 0 0 1 17 6v9a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 15V6a1.5 1.5 0 0 1 1.5-1.5Z'/%3E%3C/svg%3E\")"
+
 export default function Clone() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
@@ -495,7 +502,11 @@ export default function Clone() {
                   value={date}
                   min={minDate}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full sm:w-auto py-3 px-4 rounded-full text-base sm:text-sm !font-mono font-semibold text-black border border-transparent focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out"
+                  className="w-full sm:w-auto bg-transparent bg-no-repeat bg-[right_0.25rem_center] pr-6 py-3 px-4 rounded-full text-base sm:text-sm !font-mono font-semibold text-black border border-transparent focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                  /* Scaled down: the calendar glyph fills ~14 of its 20px box where the
+                     chevron fills only ~8, so at equal size it reads heavier than the
+                     three rows above it. 18px lands closest to matching their weight. */
+                  style={{ backgroundImage: CALENDAR_BG, backgroundSize: "1.125rem" }}
                 />
               </div>
 
