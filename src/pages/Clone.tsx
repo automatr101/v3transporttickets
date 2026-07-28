@@ -7,9 +7,11 @@ import {
   formatTime,
   listDestinations,
   listOrigins,
+  listRouteSummaries,
   searchTrips,
   today,
   type Booking,
+  type RouteSummary,
   type Trip,
 } from "../lib/booking"
 
@@ -227,10 +229,13 @@ export default function Clone() {
 
   const searchDisabled = !origin || !destination || searching
 
-  // Origins once on mount.
+  const [routeSummaries, setRouteSummaries] = useState<RouteSummary[]>([])
+
+  // Origins and the routes table once on mount.
   useEffect(() => {
     let alive = true
     listOrigins().then((o) => alive && setOrigins(o))
+    listRouteSummaries().then((r) => alive && setRouteSummaries(r))
     return () => {
       alive = false
     }
@@ -278,6 +283,13 @@ export default function Clone() {
     setOrigin(o)
     setDestination(d)
     void runSearch(o, d, date)
+  }
+
+  /* From the routes table further down the page: same as a chip, but scrolls
+     back up to the booking card so the results are actually in view. */
+  function handleBookRoute(o: string, d: string) {
+    handlePopularRoute(o, d)
+    document.getElementById("book")?.scrollIntoView({ behavior: "smooth", block: "start" })
   }
 
   function handleSelectTrip(trip: Trip) {
@@ -446,7 +458,7 @@ export default function Clone() {
           {/* ============================================
               BOOKING CARD
               ============================================ */}
-          <div className="mt-5 mb-8">
+          <div id="book" className="mt-5 mb-8 scroll-mt-20">
             {/* divide-y is mobile-only and is a deliberate divergence from the source
                 design, which had no dividers — but it had three fields in a horizontal
                 pill, not four stacked rows. Without separation the mobile card reads as
@@ -825,6 +837,75 @@ export default function Clone() {
                 Call Now
               </a>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================
+          AVAILABLE ROUTES
+          Mirrors the routes table on vipbustickets.com: corridor, departure
+          times, fare, and a booking action per row. Rows come from the same
+          data as the search, so the table and a search can never disagree.
+          ============================================ */}
+      <section id="routes" className="bg-[#F4EDE4]">
+        <div className="mx-auto max-w-6xl p-6 pb-16">
+          <h2 className="font-rubik font-bold text-[30px] leading-[36px] tracking-[-0.75px] sm:text-[36px] sm:leading-[40px] sm:tracking-[-0.9px] text-gray-900">
+            Available Routes
+          </h2>
+          <p className="mt-3 text-[15px] text-[#6B6357]">
+            Demonstration timetable — sample departures and indicative fares, not live availability.
+          </p>
+
+          <div className="mt-8 overflow-hidden rounded-2xl bg-white shadow-md">
+            {/* Column headings are desktop-only; each mobile row repeats its own
+                labels instead, since a horizontally scrolling table on a phone is
+                worse than stacked rows. */}
+            <div className="hidden lg:grid grid-cols-12 gap-4 px-6 py-3 border-b border-gray-100 text-[13px] font-semibold uppercase tracking-wide text-[#6B6357]">
+              <div className="col-span-4">Route</div>
+              <div className="col-span-5">Departures</div>
+              <div className="col-span-2">Fare from</div>
+              <div className="col-span-1" />
+            </div>
+
+            <ul className="divide-y divide-gray-100">
+              {routeSummaries.map((r) => (
+                <li
+                  key={`${r.origin}-${r.destination}`}
+                  className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 px-6 py-4 lg:items-center"
+                >
+                  <div className="lg:col-span-4">
+                    <p className="text-[15px] font-semibold text-gray-900">
+                      {r.origin} <span className="text-orange-600">→</span> {r.destination}
+                    </p>
+                  </div>
+
+                  <div className="lg:col-span-5 flex flex-wrap gap-1.5">
+                    {r.departures.map((t) => (
+                      <span
+                        key={t}
+                        className="inline-flex items-center px-2 py-1 rounded-md bg-[#F4EDE4] text-[13px] !font-mono font-semibold text-gray-900"
+                      >
+                        {formatTime(t)}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="lg:col-span-2">
+                    <span className="text-[15px] font-semibold text-gray-900">{formatFare(r.fare)}</span>
+                  </div>
+
+                  <div className="lg:col-span-1 lg:text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleBookRoute(r.origin, r.destination)}
+                      className="w-full lg:w-auto py-2.5 px-5 text-sm font-semibold rounded-3xl border border-transparent bg-orange-600 text-white hover:bg-orange-700 transition-colors duration-300 ease-in-out"
+                    >
+                      Book
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </section>
