@@ -2,8 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Icons. SVG first for browsers that take it, 32px PNG as the fallback,
+         apple-touch-icon for iOS home screens. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#F4EDE4" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -15,6 +22,32 @@
       name="description"
       content="Book inter-region travel, airport transfers, and private charter with V3 Transport Services — Bolgatanga's trusted way through Northern Ghana. Pay by Mobile Money."
     />
+
+    <!-- Link preview. og:image must be an absolute URL — WhatsApp, Facebook and
+         X all fetch it from their own servers, where a relative path resolves to
+         nothing. Update the domain here and in og:url when the real one is live. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="V3 Transport Services" />
+    <meta property="og:locale" content="en_GH" />
+    <meta property="og:url" content="https://v3transporttickets.vercel.app/" />
+    <meta property="og:title" content="V3 Transport Services — Northern Ghana's Trusted Way to Move" />
+    <meta
+      property="og:description"
+      content="Inter-region travel, airport transfers and private charter from Bolgatanga. Book online and pay by Mobile Money."
+    />
+    <meta property="og:image" content="https://v3transporttickets.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content="V3 Transport Services — Northern Ghana's Trusted Way to Move" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="V3 Transport Services — Northern Ghana's Trusted Way to Move" />
+    <meta
+      name="twitter:description"
+      content="Inter-region travel, airport transfers and private charter from Bolgatanga. Book online and pay by Mobile Money."
+    />
+    <meta name="twitter:image" content="https://v3transporttickets.vercel.app/og-image.png" />
   </head>
   <body>
     <div id="root"></div>
