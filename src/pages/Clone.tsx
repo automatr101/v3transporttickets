@@ -169,6 +169,10 @@ const POPULAR_ROUTES: { origin: string; destination: string }[] = [
 
 const MAX_PASSENGERS = 8
 
+/* Fourteen corridors is a wall of table on a phone. Show the headline routes and
+   let the rest expand on demand. */
+const ROUTES_PREVIEW_COUNT = 3
+
 /* Approximate pin for the SSNIT Building, Bolgatanga. Replace once the client
    supplies the exact GhanaPost GPS code — still on the confirm list. */
 const MAP_LAT = 10.7875
@@ -230,6 +234,7 @@ export default function Clone() {
   const searchDisabled = !origin || !destination || searching
 
   const [routeSummaries, setRouteSummaries] = useState<RouteSummary[]>([])
+  const [showAllRoutes, setShowAllRoutes] = useState(false)
 
   // Origins and the routes table once on mount.
   useEffect(() => {
@@ -867,8 +872,8 @@ export default function Clone() {
               <div className="col-span-1" />
             </div>
 
-            <ul className="divide-y divide-gray-100">
-              {routeSummaries.map((r) => (
+            <ul id="routes-list" className="divide-y divide-gray-100">
+              {(showAllRoutes ? routeSummaries : routeSummaries.slice(0, ROUTES_PREVIEW_COUNT)).map((r) => (
                 <li
                   key={`${r.origin}-${r.destination}`}
                   className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 px-6 py-4 lg:items-center"
@@ -906,6 +911,32 @@ export default function Clone() {
                 </li>
               ))}
             </ul>
+
+            {routeSummaries.length > ROUTES_PREVIEW_COUNT && (
+              <div className="border-t border-gray-100 px-6 py-4 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowAllRoutes((v) => !v)}
+                  aria-expanded={showAllRoutes}
+                  aria-controls="routes-list"
+                  className="inline-flex items-center gap-x-2 text-sm font-semibold text-gray-900 hover:text-gray-600 transition-colors duration-300 ease-in-out"
+                >
+                  {showAllRoutes
+                    ? "Show fewer routes"
+                    : `View all ${routeSummaries.length} routes`}
+                  <svg
+                    className={`w-4 h-4 transition-transform duration-300 ease-in-out ${showAllRoutes ? "rotate-180" : ""}`}
+                    fill="none"
+                    viewBox="0 0 20 20"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m6 8 4 4 4-4" />
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </section>
