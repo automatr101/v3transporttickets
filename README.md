@@ -37,21 +37,19 @@ Expected schema (`routes`, `trips`, `bookings`) is documented at the top of that
 seat decrementing is deliberately *not* implemented client-side — it races between concurrent
 bookings and belongs in a Postgres transaction or edge function.
 
-## Stats counters
+## The dark band: benefits, not statistics
 
-[`src/hooks/useCountUp.ts`](src/hooks/useCountUp.ts) counts from zero on scroll into view, once,
-via IntersectionObserver, and honours `prefers-reduced-motion`.
+That section originally held four count-up statistics with no figures behind them, rendering as em
+dashes. It is now four benefit cards (`WHY_BOOK` in `Clone.tsx`).
 
-Values live in the `STATS` config at the top of `Clone.tsx`. All four are `null`, which renders an
-em dash and keeps the counter dormant — these are client metrics that have not been supplied.
-Drop a real number in and the animation starts working with no other change:
+This follows [vipbustickets.com](https://www.vipbustickets.com/), which has **no statistics section
+at all** — it fills the equivalent slot with benefit cards ("24/7 Booking", "Mobile Money",
+"E-Ticket"). That is the honest way to fill the space: the slot reads as finished without asserting
+a number nobody has verified.
 
-```ts
-{ label: "Passengers moved", value: 230000, color: "text-white", suffix: "+" }
-```
-
-`decimals` drives both the count-up steps and the final display, so a rate like 99.9 needs
-`decimals: 1`.
+[`src/hooks/useCountUp.ts`](src/hooks/useCountUp.ts) is retained and unused. If V3 supplies real
+figures and wants counters restored, it counts from zero on scroll into view via
+IntersectionObserver and honours `prefers-reduced-motion`.
 
 ## Map
 

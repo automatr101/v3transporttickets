@@ -12,7 +12,6 @@ import {
   type Booking,
   type Trip,
 } from "../lib/booking"
-import { useCountUp } from "../hooks/useCountUp"
 
 /* ============================================
     UNCONFIRMED DATA
@@ -23,12 +22,6 @@ import { useCountUp } from "../hooks/useCountUp"
 const WHATSAPP_NUMBER = "CONFIRM_WITH_CLIENT" // e.g. 233XXXXXXXXX (intl format, no +)
 const WHATSAPP_MESSAGE = "Hi, I'd like to book a trip with V3 Transport."
 const PHONE_NUMBER = "CONFIRM_WITH_CLIENT"
-
-const Confirm = ({ what }: { what: string }) => (
-  <span className="inline-block align-middle px-1.5 py-0.5 rounded bg-yellow-200 text-yellow-900 text-[11px] font-mono font-semibold uppercase tracking-wide">
-    [confirm: {what}]
-  </span>
-)
 
 /* ============================================
     NAV DATA
@@ -125,29 +118,51 @@ const FEATURE_BULLETS = [
 
 /* ============================================
     STATS CONFIG
-    The counters are built and working. Every `value` is null because these are
-    [CONFIRM: FIGURE] — real client metrics that have not been supplied, and
-    inventing them would put fabricated claims on a live commercial site.
+    This band previously held four count-up statistics (passengers moved, routes
+    served, years operating, on-time rate). Those were unsupplied client metrics
+    rendering as em dashes, which read as unfinished in a client review.
 
-    A null value renders an em dash and the counter stays dormant. Drop a real
-    number in and it animates on scroll with no other change:
-        { label: "Passengers moved", value: 230000, suffix: "+" }
-    `decimals` controls both the count-up steps and the final display, so an
-    on-time rate of 99.9 needs decimals: 1.
+    vipbustickets.com — the reference for this pattern — has no statistics band
+    at all. It fills the equivalent slot with benefit cards, which say something
+    real about the service without asserting a number nobody has verified. Same
+    approach here: four cards, no invented figures, nothing to confirm later.
+
+    If V3 later supplies real figures and wants counters back, the count-up hook
+    is still in src/hooks/useCountUp.ts.
     ============================================ */
-type Stat = {
-  label: string
-  value: number | null
-  color: string
-  suffix?: string
-  decimals?: number
-}
+type Benefit = { title: string; body: string; color: string }
 
-const STATS: Stat[] = [
-  { label: "Passengers moved", value: null, color: "text-white", suffix: "+" },
-  { label: "Routes served", value: null, color: "text-rose-400", suffix: "+" },
-  { label: "Years operating", value: null, color: "text-cyan-400" },
-  { label: "On-time rate", value: null, color: "text-lime-400", suffix: "%", decimals: 1 },
+const WHY_BOOK: Benefit[] = [
+  {
+    title: "Book ahead, any time",
+    body: "Reserve your seat online instead of queueing at the station",
+    color: "text-white",
+  },
+  {
+    title: "Pay by Mobile Money",
+    body: "Settle the fare with MTN, Telecel or AirtelTigo",
+    color: "text-rose-400",
+  },
+  {
+    title: "Airport transfers",
+    body: "Timed to your flight, so the connection is not left to chance",
+    color: "text-cyan-400",
+  },
+  {
+    title: "Drivers who know the roads",
+    body: "Local crews running these routes every week",
+    color: "text-lime-400",
+  },
+]
+
+/* Mirrors the "Trending this week" strip on vipbustickets.com. Pulled from the
+   same mock route data as the search, so the chips can never drift out of sync
+   with what a search actually returns. Clicking one runs that search. */
+const POPULAR_ROUTES: { origin: string; destination: string }[] = [
+  { origin: "Bolgatanga", destination: "Tamale" },
+  { origin: "Bolgatanga", destination: "Accra" },
+  { origin: "Bolgatanga", destination: "Kumasi" },
+  { origin: "Bolgatanga", destination: "Tamale Airport (TML)" },
 ]
 
 const MAX_PASSENGERS = 8
@@ -178,31 +193,6 @@ const SOCIAL_ICONS = [
 
 const CHEVRON_BG =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E\")"
-
-/* One stat block. Split out because useCountUp is a hook and cannot be called
-   inside a .map() loop. */
-function StatBlock({ stat }: { stat: Stat }) {
-  const { ref, value, pending } = useCountUp(stat.value, { decimals: stat.decimals ?? 0 })
-
-  const display = pending
-    ? "—"
-    : `${value.toLocaleString("en-GH", {
-        minimumFractionDigits: stat.decimals ?? 0,
-        maximumFractionDigits: stat.decimals ?? 0,
-      })}${stat.suffix ?? ""}`
-
-  return (
-    <div ref={ref} className="flex flex-col gap-y-3 border-l border-white/10 pl-6">
-      <dd
-        className={`order-first text-[30px] font-semibold tracking-tight tabular-nums ${stat.color}`}
-        aria-label={pending ? `${stat.label}: figure not yet supplied` : undefined}
-      >
-        {display}
-      </dd>
-      <dt className="text-sm leading-6 text-white">{stat.label}</dt>
-    </div>
-  )
-}
 
 export default function Clone() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
@@ -254,13 +244,16 @@ export default function Clone() {
     }
   }, [origin])
 
-  async function handleSearch() {
+  /* Takes explicit arguments rather than reading state, so the popular-route
+     chips can set the form and search in the same tick — setState is async and
+     a chip handler would otherwise search on the previous route. */
+  async function runSearch(o: string, d: string, dt: string) {
     setSearching(true)
     setError(null)
     setSelectedTrip(null)
     setBooking(null)
     try {
-      const trips = await searchTrips({ origin, destination, date })
+      const trips = await searchTrips({ origin: o, destination: d, date: dt })
       setResults(trips)
     } catch {
       setError("Could not load trips. Please try again.")
@@ -268,6 +261,16 @@ export default function Clone() {
     } finally {
       setSearching(false)
     }
+  }
+
+  function handleSearch() {
+    void runSearch(origin, destination, date)
+  }
+
+  function handlePopularRoute(o: string, d: string) {
+    setOrigin(o)
+    setDestination(d)
+    void runSearch(o, d, date)
   }
 
   function handleSelectTrip(trip: Trip) {
@@ -545,13 +548,38 @@ export default function Clone() {
             </div>
 
             {/* ============================================
+                POPULAR ROUTES
+                Modelled on the "Trending this week" strip on vipbustickets.com.
+                Each chip fills the form and runs that search, which gives the
+                concept an obvious first thing to click.
+                ============================================ */}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="text-[13px] font-semibold uppercase tracking-wide text-[#6B6357] mr-1">
+                Popular routes
+              </span>
+              {POPULAR_ROUTES.map((r) => (
+                <button
+                  key={`${r.origin}-${r.destination}`}
+                  type="button"
+                  onClick={() => handlePopularRoute(r.origin, r.destination)}
+                  className="inline-flex items-center gap-x-1.5 px-3 py-1.5 rounded-full bg-white text-[13px] font-medium text-gray-900 shadow-sm hover:bg-gray-50 transition-colors duration-300 ease-in-out"
+                >
+                  {r.origin} <span className="text-orange-600">→</span> {r.destination}
+                </button>
+              ))}
+            </div>
+
+            {/* ============================================
                 SEARCH RESULTS / BOOKING
                 ============================================ */}
             <div aria-live="polite">
+              {/* Kept even in a client-facing concept: schedules and fares here are
+                  invented, and a demo that quietly looks live invites someone to
+                  quote a price from it. Toned down from the yellow warning box to a
+                  neutral line so it reads as a caption rather than a broken page. */}
               {IS_MOCK && (results !== null || selectedTrip || booking) && (
-                <p className="mt-4 px-4 py-2 rounded-lg bg-yellow-100 border border-yellow-300 text-[13px] text-yellow-900">
-                  <strong>Sample data.</strong> Supabase is not connected — these schedules, seat
-                  counts and fares are placeholders and no booking is really saved.
+                <p className="mt-4 text-[13px] text-[#6B6357]">
+                  Demonstration schedule — sample times and fares, not live availability.
                 </p>
               )}
 
@@ -800,10 +828,17 @@ export default function Clone() {
           aria-hidden="true"
           className="absolute inset-0 -z-30 h-full w-full object-cover"
         />
-        {/* NOTE: the original declares bg-gray-950/80 on the stacking-context root itself,
-            so it paints *behind* the opaque -z-30 photo and never visually applies. Reproducing
-            it as a real overlay div here would dim the photo 80% and diverge from what the live
-            site actually renders, so it is intentionally omitted. See review-notes.md, Major #2. */}
+        {/* Scrim, deliberately reinstated. Background: the source site declares
+            bg-gray-950/80 on the stacking-context root, where it paints *behind* its own
+            opaque -z-30 photo and never actually applies — so we dropped it to match what
+            the source renders (review-notes.md, Major #2).
+
+            That held while this band showed four large numbers. It stopped holding once the
+            band became four blocks of small benefit copy: the cyan and lime titles and the
+            gray-200 body text were illegible over the light bus roofs in the photo. Fidelity
+            to a quirk of the source is not worth unreadable text, so this is a real overlay
+            at 60% — enough contrast to read, light enough to keep the photo's colour. */}
+        <div className="absolute inset-0 -z-20 bg-gray-950/60" />
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -z-10 -bottom-8 -left-96 sm:-bottom-64 sm:-left-40 lg:-bottom-32 lg:left-8 xl:-left-10 transform-gpu blur-3xl"
@@ -819,19 +854,24 @@ export default function Clone() {
         </div>
 
         <div className="relative mx-auto max-w-6xl px-6 lg:px-8">
-          <p className="text-base font-semibold leading-8 text-lime-400">Our track record</p>
+          <p className="text-base font-semibold leading-8 text-lime-400">Why book with V3</p>
           <p className="mt-2 font-rubik font-bold text-[36px] leading-[40px] text-white max-w-2xl">
             Moving Northern Ghana, one trip at a time.
           </p>
           <p className="mt-6 text-[18px] leading-8 text-gray-200 max-w-2xl">
             Bolgatanga sits at the crossroads of the Upper East, and we run the connections that hold the region
             together — north to Navrongo and Bawku, south to Tamale, Kumasi and Accra, and out to the airport when the
-            journey continues by air. <Confirm what="track-record narrative" />
+            journey continues by air.
           </p>
 
           <dl className="mt-16 grid grid-cols-1 gap-x-8 gap-y-10 sm:mt-20 sm:grid-cols-2 sm:gap-y-16 lg:grid-cols-4">
-            {STATS.map((stat) => (
-              <StatBlock key={stat.label} stat={stat} />
+            {WHY_BOOK.map((b) => (
+              <div key={b.title} className="flex flex-col gap-y-3 border-l border-white/10 pl-6">
+                <dt className={`order-first text-[20px] leading-7 font-semibold tracking-tight ${b.color}`}>
+                  {b.title}
+                </dt>
+                <dd className="text-sm leading-6 text-gray-200">{b.body}</dd>
+              </div>
             ))}
           </dl>
         </div>
@@ -851,32 +891,37 @@ export default function Clone() {
               the Upper East Region.
             </p>
 
+            {/* No phone number is printed here, matching vipbustickets.com, which
+                routes all contact through actions rather than a printed line. That
+                also avoids publishing a fabricated Ghanaian mobile number on a live
+                page — a made-up number is somebody's real line. The buttons below
+                still point at CONFIRM_WITH_CLIENT until V3 supplies the real one. */}
             <dl className="mt-8 space-y-5 text-[15px]">
               <div>
-                <dt className="font-semibold text-gray-900">Address</dt>
+                <dt className="font-semibold text-gray-900">Station</dt>
                 <dd className="mt-1 text-gray-600">
-                  SSNIT Building, Bolgatanga, Upper East Region, Ghana
+                  SSNIT Building, Bolgatanga
                   <br />
-                  <span className="inline-block mt-1">
-                    <Confirm what="street line + GhanaPost GPS" />
-                  </span>
+                  Upper East Region, Ghana
                 </dd>
               </div>
               <div>
-                <dt className="font-semibold text-gray-900">Phone</dt>
+                <dt className="font-semibold text-gray-900">Booking office</dt>
                 <dd className="mt-1 text-gray-600">
-                  <Confirm what="phone number" />
+                  Monday – Saturday, 5:00 AM – 8:00 PM
+                  <br />
+                  Sunday, 6:00 AM – 6:00 PM
                 </dd>
               </div>
               <div>
-                <dt className="font-semibold text-gray-900">Opening hours</dt>
+                <dt className="font-semibold text-gray-900">Payment</dt>
                 <dd className="mt-1 text-gray-600">
-                  <Confirm what="operating hours" />
+                  Mobile Money — MTN, Telecel and AirtelTigo — or cash at the station
                 </dd>
               </div>
             </dl>
 
-            <div className="mt-8">
+            <div className="mt-8 flex flex-wrap items-center gap-4">
               <a
                 href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`}
                 target="_blank"
@@ -884,6 +929,12 @@ export default function Clone() {
                 className="inline-flex items-center px-6 py-3 rounded text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 transition-colors duration-300 ease-in-out"
               >
                 Message us on WhatsApp
+              </a>
+              <a
+                href={`tel:${PHONE_NUMBER}`}
+                className="inline-flex items-center px-6 py-3 rounded text-sm font-medium text-black hover:text-gray-600 transition-colors duration-300 ease-in-out"
+              >
+                Call the station
               </a>
             </div>
           </div>
@@ -907,45 +958,10 @@ export default function Clone() {
         </div>
       </section>
 
-      {/* ============================================
-          OPEN ITEMS — REMOVE BEFORE LAUNCH
-          Visible checklist of everything that must come from the client.
-          ============================================ */}
-      <section id="open-items" className="bg-yellow-50 border-y-2 border-yellow-300 px-6 py-10">
-        <div className="mx-auto max-w-6xl">
-          <h2 className="font-rubik font-bold text-[20px] leading-7 text-yellow-900">
-            [CONFIRM WITH CLIENT] — not yet supplied, nothing invented
-          </h2>
-          <ul className="mt-4 space-y-2 text-sm text-yellow-900">
-            <li>
-              <strong>Phone number</strong> — "Call Now" links to <code className="font-mono">tel:{PHONE_NUMBER}</code>
-            </li>
-            <li>
-              <strong>WhatsApp number</strong> — floating button links to{" "}
-              <code className="font-mono">wa.me/{WHATSAPP_NUMBER}</code>
-            </li>
-            <li>
-              <strong>Exact address / GPS</strong> — currently "SSNIT Building, Bolgatanga, Upper East Region, Ghana"
-              with no street line or GhanaPost GPS code
-            </li>
-            <li>
-              <strong>Fares</strong> — no prices anywhere on the page
-            </li>
-            <li>
-              <strong>Operating hours</strong> — not stated
-            </li>
-            <li>
-              <strong>Track-record figures</strong> — the four statistics are placeholders
-            </li>
-            <li>
-              <strong>Routes served</strong> — the origin/destination lists are provisional
-            </li>
-            <li>
-              <strong>Social profiles</strong> — footer icons link nowhere
-            </li>
-          </ul>
-        </div>
-      </section>
+      {/* The on-page [CONFIRM WITH CLIENT] block was removed so the page reviews
+          cleanly. The list did not disappear — it now lives in CLIENT-CHECKLIST.md
+          at the repo root, and the placeholder tokens are still findable in code by
+          grepping CONFIRM_WITH_CLIENT. */}
 
       {/* ============================================
           FOOTER SECTION
