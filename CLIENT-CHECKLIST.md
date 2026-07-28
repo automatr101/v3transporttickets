@@ -51,6 +51,21 @@ defensible figures and wants counters back, `src/hooks/useCountUp.ts` is still i
 through buttons rather than a number printed in the copy. A fabricated Ghanaian mobile number on a
 public page is somebody's real line.
 
+## Payment provider marks
+
+`public/images/pay/` holds MTN Mobile Money, Telecel Cash and AT Money, cropped from artwork the
+client supplied. They appear in five places: hero, routes table, the dark band, contact, and the
+footer — shown as logos rather than names so the accepted methods are recognisable without reading.
+
+These are third-party trademarks, used nominatively to indicate accepted payment methods, which is
+the normal and permitted use. Two things to confirm with V3 before launch:
+
+- That V3 actually accepts all three. The logos assert a commercial fact about the business.
+- That no provider requires prior written approval for display. Some payment brands publish usage
+  guidelines covering minimum size and clear space.
+
+Note that AirtelTigo has rebranded to **AT** — page copy previously said AirtelTigo and now says AT.
+
 ## Licensing — separate from the above
 
 `public/images/city-view-bg.jpg` and `public/images/hero-bus.png` originate from

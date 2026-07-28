@@ -142,7 +142,7 @@ const WHY_BOOK: Benefit[] = [
   },
   {
     title: "Pay by Mobile Money",
-    body: "Settle the fare with MTN, Telecel or AirtelTigo",
+    body: "Settle the fare with MTN, Telecel or AT",
     color: "text-rose-400",
   },
   {
@@ -166,6 +166,42 @@ const POPULAR_ROUTES: { origin: string; destination: string }[] = [
   { origin: "Bolgatanga", destination: "Kumasi" },
   { origin: "Bolgatanga", destination: "Tamale Airport (TML)" },
 ]
+
+/* ============================================
+    PAYMENT METHODS
+    Shown as logos rather than names so the accepted methods are recognisable
+    without reading — the brand blocks (MTN yellow, Telecel red) are what most
+    people identify, not the words.
+
+    Note: AirtelTigo rebranded to AT, so the mark is "AT Money". Earlier copy on
+    this page still said AirtelTigo; corrected alongside this.
+
+    Third-party marks used nominatively, to indicate accepted payment methods.
+    Each is cropped from the artwork supplied by the client.
+    ============================================ */
+const PAYMENT_METHODS = [
+  { name: "MTN Mobile Money", src: "/images/pay/mtn-momo.png" },
+  { name: "Telecel Cash", src: "/images/pay/telecel-cash.png" },
+  { name: "AT Money", src: "/images/pay/at-money.png" },
+]
+
+/** `size` is a Tailwind height class so callers can scale per context. The white
+ *  chip keeps the three blocks reading as one set on any background — cream,
+ *  white or the dark band. */
+function PaymentLogos({ size = "h-8", className = "" }: { size?: string; className?: string }) {
+  return (
+    <ul className={`flex flex-wrap items-center gap-2 ${className}`}>
+      {PAYMENT_METHODS.map((m) => (
+        <li
+          key={m.name}
+          className="inline-flex items-center rounded-md bg-white px-1.5 py-1 shadow-sm ring-1 ring-black/5"
+        >
+          <img src={m.src} alt={m.name} title={m.name} loading="lazy" className={`${size} w-auto`} />
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 const MAX_PASSENGERS = 8
 
@@ -519,7 +555,13 @@ export default function Clone() {
                   value={date}
                   min={minDate}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full sm:w-auto bg-transparent bg-no-repeat bg-[right_0.25rem_center] pr-6 py-3 px-4 rounded-full text-base sm:text-sm !font-mono font-semibold text-black border border-transparent focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                  /* The three selects use appearance-none; the date input needs it too or
+                     Safari keeps its native box metrics and the value sits ~10px left of
+                     the rows above. The two pseudo-element rules are the iOS-specific
+                     half: Safari renders the value inside ::-webkit-date-and-time-value,
+                     which is centred and carries its own margin. Chrome ignores both and
+                     was already aligned, which is why this only showed up on a phone. */
+                  className="w-full sm:w-auto appearance-none bg-transparent bg-no-repeat bg-[right_0.25rem_center] pr-6 py-3 px-4 rounded-full text-base sm:text-sm !font-mono font-semibold text-black border border-transparent focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors duration-300 ease-in-out cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-date-and-time-value]:text-left [&::-webkit-date-and-time-value]:m-0 [&::-webkit-datetime-edit]:p-0"
                   /* Scaled down: the calendar glyph fills ~14 of its 20px box where the
                      chevron fills only ~8, so at equal size it reads heavier than the
                      three rows above it. 18px lands closest to matching their weight. */
@@ -626,6 +668,10 @@ export default function Clone() {
                     <span className="font-semibold">{booking.status}</span>. We'll confirm your seat
                     shortly.
                   </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <span className="text-[13px] text-gray-600">Pay by Mobile Money or at the station</span>
+                    <PaymentLogos size="h-8" />
+                  </div>
                   <button
                     type="button"
                     onClick={() => {
@@ -786,6 +832,7 @@ export default function Clone() {
             <span>Mobile Money accepted · Operating from the SSNIT Building, Bolgatanga</span>
             <br />
             <span className="font-bold">Local operators, local routes, local knowledge</span>
+            <PaymentLogos className="mt-3" />
           </div>
         </div>
       </section>
@@ -860,6 +907,12 @@ export default function Clone() {
           <p className="mt-3 text-[15px] text-[#6B6357]">
             Demonstration timetable — sample departures and indicative fares, not live availability.
           </p>
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span className="text-[13px] font-semibold uppercase tracking-wide text-[#6B6357]">
+              Pay with
+            </span>
+            <PaymentLogos />
+          </div>
 
           <div className="mt-8 overflow-hidden rounded-2xl bg-white shadow-md">
             {/* Column headings are desktop-only; each mobile row repeats its own
@@ -993,7 +1046,10 @@ export default function Clone() {
                 <dt className={`order-first text-[20px] leading-7 font-semibold tracking-tight ${b.color}`}>
                   {b.title}
                 </dt>
-                <dd className="text-sm leading-6 text-gray-200">{b.body}</dd>
+                <dd className="text-sm leading-6 text-gray-200">
+                  {b.body}
+                  {b.title.includes("Mobile Money") && <PaymentLogos className="mt-3" size="h-8" />}
+                </dd>
               </div>
             ))}
           </dl>
@@ -1039,7 +1095,8 @@ export default function Clone() {
               <div>
                 <dt className="font-semibold text-gray-900">Payment</dt>
                 <dd className="mt-1 text-gray-600">
-                  Mobile Money — MTN, Telecel and AirtelTigo — or cash at the station
+                  Mobile Money or cash at the station
+                  <PaymentLogos className="mt-2" size="h-8" />
                 </dd>
               </div>
             </dl>
@@ -1124,6 +1181,13 @@ export default function Clone() {
               </li>
             ))}
           </ul>
+
+          <div className="mb-6 flex flex-col items-center gap-y-2">
+            <span className="text-[13px] font-semibold uppercase tracking-wide text-slate-600">
+              Payment accepted
+            </span>
+            <PaymentLogos className="justify-center" />
+          </div>
 
           <p className="text-sm text-slate-600">SSNIT Building, Bolgatanga, Upper East Region, Ghana</p>
           <p className="mt-2 text-sm text-slate-600">© V3 Transport Services. All Rights Reserved.</p>
